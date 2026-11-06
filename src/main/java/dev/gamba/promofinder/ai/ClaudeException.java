@@ -7,6 +7,9 @@ public class ClaudeException extends IOException {
 
 	private final CheckError error;
 
+	/** What the failed run still cost (API-equivalent USD), when the CLI reported it. */
+	private Double costUsd;
+
 	public ClaudeException(CheckError error, String detail) {
 		super(detail);
 		this.error = error;
@@ -19,6 +22,15 @@ public class ClaudeException extends IOException {
 
 	public CheckError error() {
 		return error;
+	}
+
+	public Double costUsd() {
+		return costUsd;
+	}
+
+	ClaudeException withCost(Double costUsd) {
+		this.costUsd = costUsd;
+		return this;
 	}
 
 	/** Guesses the cause from what the CLI printed. */

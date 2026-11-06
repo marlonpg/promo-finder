@@ -129,6 +129,10 @@ public class WatchChecker {
 			CheckError error = e instanceof ClaudeException ce ? ce.error() : CheckError.UNKNOWN;
 			log.error("Check failed for '{}' ({})", watch.getProduct(), error, e);
 			run.setErrorCode(error.name());
+			// A failed search still used Claude; keep its cost so the usage totals stay honest.
+			if (e instanceof ClaudeException ce) {
+				run.setCostUsd(ce.costUsd());
+			}
 			run.setNote(truncate(e.getMessage()));
 		}
 		run.setFinishedAt(Instant.now());

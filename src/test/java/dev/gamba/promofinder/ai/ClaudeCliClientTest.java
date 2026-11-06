@@ -40,4 +40,46 @@ class ClaudeCliClientTest {
 				.isInstanceOf(IOException.class)
 				.hasMessageContaining("not logged in");
 	}
+
+	@Test
+	void prefersStructuredOutput() throws IOException {
+		String envelope = "{\"is_error\":false,\"total_cost_usd\":0.05,\"result\":\"Here is what I found.\","
+				+ "\"structured_output\":{\"offers\":[{\"store\":\"Amazon BR\",\"title\":\"S26\",\"price\":6649.05,"
+				+ "\"url\":\"https://www.amazon.com.br/dp/1\"}],\"notes\":\"one offer\"}}";
+
+		SearchResult result = client.parse(envelope);
+
+		assertThat(result.offers()).singleElement()
+				.satisfies(o -> assertThat(o.price()).isEqualByComparingTo("6649.05"));
+		assertThat(result.notes()).isEqualTo("one offer");
+		assertThat(result.costUsd()).isEqualTo(0.05);
+	}
+
+	@Test
+	void proseAnswerFailsButKeepsCost() {
+		String envelope = "{\"is_error\":false,\"total_cost_usd\":0.31,"
+				+ "\"result\":\"All current market prices are above your target.\"}";
+
+		assertThatThrownBy(() -> client.parse(envelope))
+				.isInstanceOfSatisfying(ClaudeException.class, e -> {
+					assertThat(e.error()).isEqualTo(CheckError.CLAUDE_BAD_ANSWER);
+					assertThat(e.costUsd()).isEqualTo(0.31);
+				});
+	}
+
+	@Test
+	void cliErrorKeepsCost() {
+		assertThatThrownBy(() -> client.parse("{\"is_error\":true,\"total_cost_usd\":0.12,\"result\":\"usage limit reached\"}"))
+				.isInstanceOfSatisfying(ClaudeException.class, e -> {
+					assertThat(e.error()).isEqualTo(CheckError.CLAUDE_LIMIT_REACHED);
+					assertThat(e.costUsd()).isEqualTo(0.12);
+				});
+	}
+
+	@Test
+	void answerSchemaIsValidJsonWithoutWhitespace() {
+		assertThat(ClaudeCliClient.ANSWER_SCHEMA).doesNotContainPattern("\\s");
+		assertThat(JsonMapper.builder().build().readTree(ClaudeCliClient.ANSWER_SCHEMA).path("required").toString())
+				.isEqualTo("[\"offers\",\"notes\"]");
+	}
 }
