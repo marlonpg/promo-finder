@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<th:block th:fragment="nothing"></th:block>
+
+<!-- Toasts are swapped out-of-band into #toasts, whatever the request's own target is. -->
+<th:block th:fragment="toast">
+  <div hx-swap-oob="beforeend:#toasts">
+    <div class="toast" th:classappend="|toast-${toast.type}|" th:attr="role=${toast.type == 'error'} ? 'alert' : 'status',data-undo=${toast.undoUrl != null}">
+      <svg class="i toast-icon" th:switch="${toast.type}">
+        <use th:case="'success'" href="#i-check"/>
+        <use th:case="'error'" href="#i-alert"/>
+        <use th:case="*" href="#i-info"/>
+      </svg>
+      <span class="toast-msg" th:text="${toast.message}">Saved</span>
+      <button th:if="${toast.undoUrl != null}" type="button" class="toast-action"
+              th:hx-post="${toast.undoUrl}" hx-swap="none" th:text="#{common.undo}">Undo</button>
+      <button type="button" class="toast-close" data-dismiss th:aria-label="#{common.close}">
+        <svg class="i"><use href="#i-x"/></svg>
+      </button>
+    </div>
+  </div>
+</th:block>
+
+</body>
+</html>

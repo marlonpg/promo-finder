@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head th:replace="~{fragments/layout :: head(#{nav.watches})}"></head>
+<body data-page="watches">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+
+<main class="container">
+  <div class="page-head">
+    <div>
+      <h1 th:text="#{watches.title}">Your watches</h1>
+      <p class="muted" th:text="#{watches.subtitle}">Claude checks your stores and tells you when a price drops.</p>
+    </div>
+    <button type="button" id="new-watch" class="btn btn-primary" hx-get="/ui/watches/new" hx-target="#drawer-body" hx-swap="innerHTML"
+            th:title="#{watches.new.shortcut}">
+      <svg class="i"><use href="#i-plus"/></svg><span th:text="#{watches.new}">New watch</span><kbd>N</kbd>
+    </button>
+  </div>
+
+  <section th:replace="~{fragments/watches :: stats}"></section>
+  <div th:replace="~{fragments/watches :: list}"></div>
+</main>
+
+<th:block th:replace="~{fragments/layout :: shell}"></th:block>
+</body>
+</html>

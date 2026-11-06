@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head th:replace="~{fragments/layout :: head(#{nav.settings})}"></head>
+<body data-page="settings">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+
+<main class="container narrow">
+  <div class="page-head">
+    <div>
+      <h1 th:text="#{settings.title}">Settings</h1>
+      <p class="muted" th:text="#{settings.subtitle}">How Promo Finder reaches you and runs Claude.</p>
+    </div>
+  </div>
+
+  <section class="settings-section">
+    <h2 th:text="#{settings.channels.title}">Notifications</h2>
+    <div class="channel card" th:each="c : ${channels}">
+      <div class="channel-head">
+        <span class="channel-icon" th:classappend="${c.configured} ? 'ok'"><svg class="i"><use th:href="|#i-${c.channel}|"/></svg></span>
+        <div class="channel-text">
+          <strong th:text="#{channel.__${c.channel}__}">Email</strong>
+          <p class="muted small" th:text="#{settings.channel.__${c.channel}__.how}">How to set up</p>
+        </div>
+        <span class="badge" th:classappend="${c.configured} ? 'badge-deal' : 'badge-paused'">
+          <span class="dot"></span>
+          <span th:text="${c.configured} ? #{settings.configured} : #{settings.notConfigured}">Configured</span>
+        </span>
+      </div>
+      <div class="missing" th:unless="${c.configured}">
+        <p class="small" th:text="#{settings.missing}">Add these to application-local.properties, then restart:</p>
+        <ul><li th:each="m : ${c.missingSettings}"><code th:text="${m}">key</code></li></ul>
+      </div>
+      <div class="channel-actions" th:if="${c.configured}">
+        <button type="button" class="btn" th:hx-post="@{/ui/settings/test/{c}(c=${c.channel})}" hx-swap="none" hx-disabled-elt="this">
+          <span class="btn-spinner" aria-hidden="true"></span>
+          <span th:text="#{settings.sendTest}">Send test</span>
+        </button>
+      </div>
+    </div>
+    <p class="muted small" th:utext="#{settings.channels.note}">Edit application-local.properties and restart.</p>
+  </section>
+
+  <section class="settings-section">
+    <h2 th:text="#{settings.claude.title}">Claude Code CLI</h2>
+    <div class="card">
+      <dl class="kv">
+        <dt th:text="#{settings.claude.command}">Command</dt><dd><code th:text="${claude.command}">claude</code></dd>
+        <dt th:text="#{settings.claude.model}">Model</dt><dd><code th:text="${claude.model}">sonnet</code></dd>
+        <dt th:text="#{settings.claude.timeout}">Timeout per search</dt><dd><code th:text="${@fmt.interval(claude.timeout.toMinutes())}">10 min</code></dd>
+      </dl>
+      <p class="muted small" th:text="#{settings.claude.hint}">hint</p>
+      <button type="button" class="btn" hx-post="/ui/settings/claude" hx-swap="none" hx-disabled-elt="this">
+        <span class="btn-spinner" aria-hidden="true"></span>
+        <svg class="i"><use href="#i-cpu"/></svg><span th:text="#{settings.claude.test}">Test Claude CLI</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h2 th:text="#{settings.language.title}">Language</h2>
+    <div class="card lang-pick">
+      <a href="?lang=en" class="btn" th:classappend="${#locale.language == 'en'} ? 'btn-primary'">English</a>
+      <a href="?lang=pt-BR" class="btn" th:classappend="${#locale.language == 'pt'} ? 'btn-primary'">Português (Brasil)</a>
+    </div>
+  </section>
+</main>
+
+<th:block th:replace="~{fragments/layout :: shell}"></th:block>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Stats row + first-use checklist -->
+<section th:fragment="stats" id="summary" class="summary"
+         hx-get="/ui/watches/summary" hx-trigger="watchesChanged from:body, live-summary from:body, live-resync from:body" hx-swap="outerHTML" hx-disinherit="*">
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-label" th:text="#{summary.active}">Active watches</span>
+      <span class="stat-value">
+        <span th:text="${summary.activeWatches}">0</span><small th:text="#{summary.ofTotal(${summary.totalWatches})}">of 0</small>
+      </span>
+    </div>
+    <div class="stat" th:classappend="${summary.deals7d > 0} ? 'stat-good'">
+      <span class="stat-label" th:text="#{summary.deals}">Deals this week</span>
+      <span class="stat-value" th:text="${summary.deals7d}">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label" th:text="#{summary.lastCheck}">Last check</span>
+      <span class="stat-value stat-small">
+        <time th:if="${summary.lastCheck != null}" data-rel th:datetime="${@fmt.iso(summary.lastCheck)}"
+              th:text="${@fmt.dateTime(summary.lastCheck)}"></time>
+        <span th:unless="${summary.lastCheck != null}" class="muted" th:text="#{summary.never}">never</span>
+      </span>
+    </div>
+    <div class="stat" th:title="#{summary.usageHint}">
+      <span class="stat-label" th:text="#{summary.usage}">Claude usage, 7 days</span>
+      <span class="stat-value stat-small" th:text="${@fmt.usd(summary.cost7d)}">US$ 0.00</span>
+    </div>
+  </div>
+
+  <div class="checklist card" th:if="${summary.showChecklist()}">
+    <div class="checklist-head">
+      <h2 th:text="#{checklist.title}">Get started</h2>
+      <span class="muted" th:text="#{checklist.progress(${summary.stepsDone()})}">0 of 3 done</span>
+    </div>
+    <div class="meter meter-thin"><span th:style="|width:${summary.stepsDone() * 100 / 3}%|"></span></div>
+    <ol class="steps">
+      <li th:classappend="${summary.hasStores} ? 'done'">
+        <span class="step-dot"><svg class="i"><use href="#i-check"/></svg></span>
+        <div>
+          <a th:href="@{/stores}" th:text="#{checklist.stores}">Add the stores you trust</a>
+          <p class="muted" th:text="#{checklist.storesHint}">Optional</p>
+        </div>
+      </li>
+      <li th:classappend="${summary.hasWatches()} ? 'done'">
+        <span class="step-dot"><svg class="i"><use href="#i-check"/></svg></span>
+        <div>
+          <button type="button" class="link" hx-get="/ui/watches/new" hx-target="#drawer-body" hx-swap="innerHTML" th:text="#{checklist.watch}">Add a watch</button>
+          <p class="muted" th:text="#{checklist.watchHint}">Product and price</p>
+        </div>
+      </li>
+      <li th:classappend="${summary.hasChannel} ? 'done'">
+        <span class="step-dot"><svg class="i"><use href="#i-check"/></svg></span>
+        <div>
+          <a th:href="@{/settings}" th:text="#{checklist.channel}">Set up a notification</a>
+          <p class="muted" th:text="#{checklist.channelHint}">Email, Telegram or SMS</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- All watch cards -->
+<div th:fragment="list" id="watch-list" hx-get="/ui/watches" hx-trigger="watchesChanged from:body, live-resync from:body" hx-swap="outerHTML" hx-disinherit="*">
+  <div class="watch-grid" th:unless="${#lists.isEmpty(views)}">
+    <th:block th:each="v : ${views}">
+      <article th:replace="~{fragments/watches :: card}"></article>
+    </th:block>
+  </div>
+  <div class="empty card" th:if="${#lists.isEmpty(views)}">
+    <div class="empty-icon"><svg class="i"><use href="#i-tag"/></svg></div>
+    <h2 th:text="#{watches.empty.title}">No watches yet</h2>
+    <p class="muted" th:text="#{watches.empty.text}">Tell Claude what to look for.</p>
+    <button type="button" class="btn btn-primary" hx-get="/ui/watches/new" hx-target="#drawer-body" hx-swap="innerHTML">
+      <svg class="i"><use href="#i-plus"/></svg><span th:text="#{watches.new}">New watch</span>
+    </button>
+  </div>
+</div>
+
+<!-- One watch. Refreshes itself when the server pushes "watch-{id}". -->
+<article th:fragment="card" class="card watch" th:id="|watch-${v.watch.id}|"
+         th:classappend="|is-${v.status.css()}|"
+         th:hx-get="${onDetail} ? @{/ui/watches/{id}/card(id=${v.watch.id},detail=true)} : @{/ui/watches/{id}/card(id=${v.watch.id})}"
+         th:hx-trigger="${onDetail} ? |live-watch-${v.watch.id} from:body, live-resync from:body| : |live-watch-${v.watch.id} from:body|" hx-swap="outerHTML" hx-disinherit="*">
+  <header class="watch-head">
+    <div class="watch-title">
+      <h3><a th:href="@{/watches/{id}(id=${v.watch.id})}" th:text="${v.watch.product}">Product</a></h3>
+      <p class="muted" th:if="${v.watch.details}" th:text="${v.watch.details}">details</p>
+    </div>
+    <span class="badge" th:classappend="|badge-${v.status.css()}|">
+      <span class="dot"></span><span th:text="#{status.__${v.status}__}">Watching</span>
+    </span>
+  </header>
+
+  <div class="searching" th:if="${v.busy}" role="status">
+    <span class="spinner" aria-hidden="true"></span>
+    <span th:if="${v.status.name() == 'SEARCHING'}">
+      <span th:text="#{card.searching}">Searching stores…</span>
+      <span class="elapsed" data-elapsed th:data-since="${v.searchingSince}">0:00</span>
+    </span>
+    <span th:unless="${v.status.name() == 'SEARCHING'}" th:text="#{card.queued}">Waiting in line…</span>
+  </div>
+
+  <div class="prices">
+    <div class="price-row">
+      <span class="label" th:text="#{card.bestNow}">Best now</span>
+      <span th:if="${v.watch.lastBestPrice != null}" class="price-best">
+        <strong th:text="${@fmt.brl(v.watch.lastBestPrice)}">R$ 0,00</strong>
+        <span class="muted" th:text="${v.watch.lastBestStore}">store</span>
+      </span>
+      <span th:unless="${v.watch.lastBestPrice != null}" class="muted"
+            th:text="${v.watch.lastCheckedAt == null} ? #{card.noPriceYet} : #{card.noPriceFound}">—</span>
+    </div>
+    <div class="price-row">
+      <span class="label" th:text="#{card.target}">Target</span>
+      <span class="price-target" th:text="${@fmt.brl(v.watch.maxPrice)}">R$ 0,00</span>
+    </div>
+    <th:block th:if="${v.gap != null}">
+      <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100" th:aria-valuenow="${v.progress}"
+           th:classappend="${v.above} ? 'meter-above' : 'meter-deal'">
+        <span th:style="|width:${v.progress}%|"></span>
+      </div>
+      <p class="gap" th:classappend="${v.above} ? 'gap-above' : 'gap-below'"
+         th:text="${v.above} ? #{card.above(${@fmt.brl(v.absGap())})} : #{card.below(${@fmt.brl(v.absGap())})}">gap</p>
+    </th:block>
+  </div>
+
+  <figure class="spark" th:if="${v.spark != null}">
+    <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" x2="120" th:y1="${v.spark.targetY}" th:y2="${v.spark.targetY}" class="spark-target"/>
+      <polygon th:points="${v.spark.area}" class="spark-area"/>
+      <polyline th:points="${v.spark.line}" class="spark-line" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <figcaption class="muted" th:text="#{card.last7days}">price over the last 7 days</figcaption>
+  </figure>
+
+  <div class="alert alert-error" th:if="${v.status.name() == 'ERROR'}">
+    <svg class="i"><use href="#i-alert"/></svg>
+    <div>
+      <strong th:text="#{error.__${v.watch.lastErrorCode}__.title}">Error</strong>
+      <p th:text="#{error.__${v.watch.lastErrorCode}__.hint}">hint</p>
+      <details th:if="${v.watch.lastStatus}">
+        <summary th:text="#{card.technicalDetails}">Technical details</summary>
+        <code th:text="${v.watch.lastStatus}"></code>
+      </details>
+    </div>
+  </div>
+
+  <a th:if="${v.status.name() == 'DEAL' and v.watch.lastBestUrl != null}" class="btn btn-deal"
+     th:href="${v.watch.lastBestUrl}" target="_blank" rel="noopener noreferrer">
+    <span th:text="#{card.goToStore(${v.watch.lastBestStore})}">Go to store</span>
+    <svg class="i"><use href="#i-external"/></svg>
+  </a>
+
+  <footer class="watch-foot">
+    <div class="channels">
+      <span th:each="c : ${v.watch.channels}" class="chip chip-icon" th:title="#{channel.__${c}__}">
+        <svg class="i"><use th:href="|#i-${c}|"/></svg><span th:text="#{channel.__${c}__}">Email</span>
+      </span>
+      <span th:if="${#sets.isEmpty(v.watch.channels)}" class="muted small" th:text="#{card.noAlerts}">No alerts</span>
+    </div>
+    <div class="next muted small">
+      <svg class="i"><use href="#i-clock"/></svg>
+      <span th:if="${!v.watch.active}" th:text="#{card.pausedHint}">Paused</span>
+      <th:block th:if="${v.watch.active}">
+        <span th:if="${v.busy}" th:text="#{card.every(${@fmt.interval(v.watch.intervalMinutes)})}">every 1 h</span>
+        <span th:if="${!v.busy and v.watch.nextCheckAt() == null}" th:text="#{card.firstCheckSoon}">soon</span>
+        <span th:if="${!v.busy and v.watch.nextCheckAt() != null}">
+          <span th:text="#{card.nextCheck}">Next check</span>
+          <time data-rel="future" th:datetime="${@fmt.iso(v.watch.nextCheckAt())}"
+                th:text="${@fmt.dateTime(v.watch.nextCheckAt())}"></time>
+        </span>
+      </th:block>
+    </div>
+  </footer>
+
+  <div class="actions">
+    <button type="button" class="btn" th:hx-post="@{/ui/watches/{id}/check(id=${v.watch.id})}" hx-swap="none"
+            hx-disabled-elt="this" th:disabled="${v.busy}">
+      <svg class="i"><use href="#i-search"/></svg><span th:text="#{card.checkNow}">Check now</span>
+    </button>
+    <button type="button" class="btn btn-ghost" th:hx-get="@{/ui/watches/{id}/edit(id=${v.watch.id})}"
+            hx-target="#drawer-body" hx-swap="innerHTML">
+      <svg class="i"><use href="#i-edit"/></svg><span th:text="#{card.edit}">Edit</span>
+    </button>
+    <details class="menu">
+      <summary class="btn btn-ghost btn-icon" th:aria-label="#{card.more}" th:title="#{card.more}">
+        <svg class="i"><use href="#i-more"/></svg>
+      </summary>
+      <div class="menu-list" role="menu">
+        <a role="menuitem" th:unless="${onDetail}" th:href="@{/watches/{id}(id=${v.watch.id})}">
+          <svg class="i"><use href="#i-chart"/></svg><span th:text="#{card.history}">Price history</span></a>
+        <button type="button" role="menuitem" th:hx-post="@{/ui/watches/{id}/toggle(id=${v.watch.id})}" hx-swap="none">
+          <svg class="i"><use th:href="${v.watch.active} ? '#i-pause' : '#i-play'"/></svg>
+          <span th:text="${v.watch.active} ? #{card.pause} : #{card.resume}">Pause</span>
+        </button>
+        <button type="button" role="menuitem" class="danger" th:hx-post="@{/ui/watches/{id}/delete(id=${v.watch.id})}" hx-swap="none">
+          <svg class="i"><use href="#i-trash"/></svg><span th:text="#{card.delete}">Delete</span>
+        </button>
+      </div>
+    </details>
+  </div>
+</article>
+
+</body>
+</html>

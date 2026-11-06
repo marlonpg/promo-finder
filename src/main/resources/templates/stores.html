@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head th:replace="~{fragments/layout :: head(#{nav.stores})}"></head>
+<body data-page="stores">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+
+<main class="container">
+  <div class="page-head">
+    <div>
+      <h1 th:text="#{stores.title}">Stores</h1>
+      <p class="muted" th:text="#{stores.subtitle}">Claude only looks at enabled stores.</p>
+    </div>
+  </div>
+
+  <form class="card add-store" hx-post="/ui/stores" hx-swap="none" data-reset-on="storeAdded"
+        hx-disabled-elt="find button[type=submit]">
+    <div class="field">
+      <label for="s-domain" th:text="#{stores.domain}">Website</label>
+      <input id="s-domain" name="domain" type="text" required autocomplete="off" placeholder="kabum.com.br">
+    </div>
+    <div class="field">
+      <label for="s-name"><span th:text="#{stores.name}">Name</span> <span class="optional" th:text="#{form.optional}">optional</span></label>
+      <input id="s-name" name="name" type="text" autocomplete="off" placeholder="KaBuM!">
+    </div>
+    <button type="submit" class="btn btn-primary">
+      <span class="btn-spinner" aria-hidden="true"></span>
+      <svg class="i"><use href="#i-plus"/></svg><span th:text="#{stores.add}">Add store</span>
+    </button>
+  </form>
+
+  <div th:replace="~{fragments/stores :: content}"></div>
+</main>
+
+<th:block th:replace="~{fragments/layout :: shell}"></th:block>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="content" id="stores-content" hx-get="/ui/stores" hx-trigger="storesChanged from:body, live-resync from:body" hx-swap="outerHTML" hx-disinherit="*">
+  <div class="store-grid" th:unless="${#lists.isEmpty(stores)}">
+    <div class="card store" th:each="s : ${stores}" th:classappend="${!s.enabled} ? 'is-disabled'">
+      <span class="avatar" aria-hidden="true">
+        <span th:text="${#strings.toUpperCase(#strings.substring(s.name, 0, 1))}">K</span>
+        <img th:src="|https://${s.domain}/favicon.ico|" alt="" loading="lazy" onerror="this.remove()">
+      </span>
+      <div class="store-text">
+        <strong th:text="${s.name}">KaBuM</strong>
+        <a class="muted small" th:href="|https://${s.domain}|" target="_blank" rel="noopener noreferrer" th:text="${s.domain}">kabum.com.br</a>
+      </div>
+      <label class="switch" th:title="${s.enabled} ? #{stores.enabled} : #{stores.disabled}">
+        <input type="checkbox" th:checked="${s.enabled}" th:hx-post="@{/ui/stores/{id}/toggle(id=${s.id})}" hx-swap="none"
+               hx-trigger="change" th:aria-label="#{stores.toggle(${s.name})}">
+        <span class="track" aria-hidden="true"></span>
+      </label>
+      <button type="button" class="btn btn-ghost btn-icon" th:hx-post="@{/ui/stores/{id}/delete(id=${s.id})}" hx-swap="none"
+              th:aria-label="#{stores.delete(${s.name})}" th:title="#{common.delete}">
+        <svg class="i"><use href="#i-trash"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="empty card" th:if="${#lists.isEmpty(stores)}">
+    <div class="empty-icon"><svg class="i"><use href="#i-store"/></svg></div>
+    <h2 th:text="#{stores.empty.title}">No stores yet</h2>
+    <p class="muted" th:text="#{stores.empty.text}">Without stores, Claude searches any reputable Brazilian shop.</p>
+  </div>
+
+  <section class="suggestions" th:unless="${#lists.isEmpty(suggestions)}">
+    <h2 th:text="#{stores.suggestions}">Popular stores</h2>
+    <div class="chips">
+      <form th:each="s : ${suggestions}" hx-post="/ui/stores" hx-swap="none" hx-disabled-elt="find button">
+        <input type="hidden" name="name" th:value="${s.name}">
+        <input type="hidden" name="domain" th:value="${s.domain}">
+        <button type="submit" class="chip chip-button" th:title="${s.domain}">
+          <svg class="i"><use href="#i-plus"/></svg><span th:text="${s.name}">Amazon</span>
+        </button>
+      </form>
+    </div>
+  </section>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<form th:fragment="form" class="drawer-form" novalidate
+      th:hx-post="${watchId == null} ? @{/ui/watches} : @{/ui/watches/{id}(id=${watchId})}"
+      hx-target="#drawer-body" hx-swap="innerHTML" hx-disabled-elt="find button[type=submit]">
+
+  <header class="drawer-head">
+    <h2 th:text="${watchId == null} ? #{form.title.new} : #{form.title.edit}">New watch</h2>
+    <button type="button" class="btn btn-ghost btn-icon" data-close-drawer th:aria-label="#{common.close}">
+      <svg class="i"><use href="#i-x"/></svg>
+    </button>
+  </header>
+
+  <div class="drawer-content">
+    <div class="field" th:classappend="${errors.containsKey('product')} ? 'has-error'">
+      <label for="f-product" th:text="#{form.product}">Product</label>
+      <input id="f-product" name="product" type="text" autocomplete="off" autofocus maxlength="200"
+             th:value="${form.product}" th:placeholder="#{form.product.placeholder}"
+             th:attr="aria-invalid=${errors.containsKey('product')}" aria-describedby="f-product-hint">
+      <p class="error" th:if="${errors.containsKey('product')}" th:text="#{${errors.product}}"></p>
+      <p class="hint" id="f-product-hint" th:text="#{form.product.hint}">Be specific</p>
+    </div>
+
+    <div class="field">
+      <label for="f-details"><span th:text="#{form.details}">Requirements</span> <span class="optional" th:text="#{form.optional}">optional</span></label>
+      <textarea id="f-details" name="details" rows="2" maxlength="1000" th:text="${form.details}"
+                th:placeholder="#{form.details.placeholder}" aria-describedby="f-details-hint"></textarea>
+      <p class="hint" id="f-details-hint" th:text="#{form.details.hint}">hint</p>
+    </div>
+
+    <div class="field" th:classappend="${errors.containsKey('maxPrice')} ? 'has-error'">
+      <label for="f-price" th:text="#{form.price}">Max price</label>
+      <div class="money">
+        <span aria-hidden="true">R$</span>
+        <input id="f-price" name="maxPrice" type="text" inputmode="numeric" autocomplete="off" data-money
+               placeholder="4.500,00" th:value="${form.maxPrice}"
+               th:attr="aria-invalid=${errors.containsKey('maxPrice')}" aria-describedby="f-price-hint">
+      </div>
+      <p class="error" th:if="${errors.containsKey('maxPrice')}" th:text="#{${errors.maxPrice}}"></p>
+      <p class="hint" id="f-price-hint" th:text="#{form.price.hint}">hint</p>
+    </div>
+
+    <fieldset class="field" th:classappend="${errors.containsKey('intervalMinutes')} ? 'has-error'">
+      <legend th:text="#{form.interval}">Check every</legend>
+      <div class="chips">
+        <label class="chip-radio" th:each="m : ${form.intervalOptions()}">
+          <input type="radio" name="intervalMinutes" th:value="${m}" th:checked="${form.intervalMinutes == m}">
+          <span th:text="${@fmt.interval(m)}">1 h</span>
+        </label>
+      </div>
+      <p class="error" th:if="${errors.containsKey('intervalMinutes')}" th:text="#{${errors.intervalMinutes}}"></p>
+      <p class="hint" th:text="#{form.interval.hint}">hint</p>
+    </fieldset>
+
+    <fieldset class="field">
+      <legend th:text="#{form.channels}">Notify me by</legend>
+      <div class="switches">
+        <div class="switch-row" th:each="c : ${channels}" th:classappend="${!c.configured} ? 'disabled'">
+          <label class="switch">
+            <input type="checkbox" name="channels" th:value="${c.channel}"
+                   th:checked="${c.configured and #sets.contains(form.channels, c.channel)}"
+                   th:disabled="${!c.configured}">
+            <span class="track" aria-hidden="true"></span>
+            <svg class="i"><use th:href="|#i-${c.channel}|"/></svg>
+            <span th:text="#{channel.__${c.channel}__}">Email</span>
+          </label>
+          <a th:unless="${c.configured}" th:href="@{/settings}" class="small" th:text="#{form.channels.setup}">Set up →</a>
+        </div>
+      </div>
+      <p class="hint" th:text="#{form.channels.hint}">hint</p>
+    </fieldset>
+
+    <label class="check">
+      <input type="checkbox" name="checkNow" value="true" th:checked="${form.checkNow}">
+      <span th:text="#{form.checkNow}">Search now after saving</span>
+    </label>
+  </div>
+
+  <footer class="drawer-foot">
+    <button type="button" class="btn btn-ghost" data-close-drawer th:text="#{common.cancel}">Cancel</button>
+    <button type="submit" class="btn btn-primary">
+      <span class="btn-spinner" aria-hidden="true"></span>
+      <span th:text="${watchId == null} ? #{form.submit.new} : #{form.submit.edit}">Save</span>
+    </button>
+  </footer>
+</form>
+
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Copy to application-local.properties (gitignored) and fill in what you use.
+
+promo.notification.email.from=you@gmail.com
+promo.notification.email.to=you@gmail.com
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=you@gmail.com
+spring.mail.password=your-gmail-app-password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+# Create a bot with @BotFather, send it a message, then get your chat id from
+# https://api.telegram.org/bot<TOKEN>/getUpdates
+promo.notification.telegram.bot-token=123456:ABC...
+promo.notification.telegram.chat-id=123456789
+
+promo.notification.sms.twilio-account-sid=AC...
+promo.notification.sms.twilio-auth-token=...
+promo.notification.sms.from=+15550001111
+promo.notification.sms.to=+5511999999999

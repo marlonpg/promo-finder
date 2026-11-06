@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.toLanguageTag()}">
+<head th:replace="~{fragments/layout :: head(${v.watch.product})}"></head>
+<body data-page="watch">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+
+<main class="container">
+  <a class="back" th:href="@{/}"><svg class="i"><use href="#i-arrow-left"/></svg><span th:text="#{detail.back}">All watches</span></a>
+
+  <div class="detail-grid">
+    <article th:replace="~{fragments/watches :: card}"></article>
+
+    <!-- Re-fetched from this same page whenever the watch changes -->
+    <section id="watch-history" class="card chart-card"
+             th:hx-get="@{/watches/{id}(id=${v.watch.id})}" hx-select="#watch-history" hx-swap="outerHTML" hx-disinherit="*"
+             th:hx-trigger="|live-watch-${v.watch.id} from:body, live-resync from:body|">
+      <div class="section-head">
+        <h2 th:text="#{detail.chart.title}">Price history</h2>
+        <span class="muted small" th:text="#{detail.chart.period}">last 30 days, best price per check</span>
+      </div>
+      <th:block th:if="${chart != null}">
+        <figure class="chart">
+          <svg th:attr="viewBox=|0 0 ${chart.width} ${chart.height}|" role="img" th:aria-label="#{detail.chart.title}">
+            <polygon th:points="${chart.area}" class="chart-area"/>
+            <line x1="0" th:x2="${chart.width}" th:y1="${chart.targetY}" th:y2="${chart.targetY}" class="chart-target"/>
+            <text x="4" th:y="${chart.targetY - 6}" class="chart-label chart-label-target"
+                  th:text="#{detail.chart.target(${@fmt.brl(v.watch.maxPrice)})}">target</text>
+            <polyline th:points="${chart.line}" class="chart-line"/>
+            <g th:each="d : ${chart.dots}">
+              <circle th:cx="${d.x}" th:cy="${d.y}" r="4" class="chart-dot">
+                <title th:text="|${@fmt.brl(d.price)} · ${d.store ?: ''} · ${@fmt.dateTime(d.at)}|"></title>
+              </circle>
+            </g>
+          </svg>
+          <figcaption class="chart-axis muted small">
+            <span th:text="${@fmt.dateTime(chart.from)}"></span>
+            <span th:text="|${@fmt.brl(chart.min)} – ${@fmt.brl(chart.max)}|"></span>
+            <span th:text="${@fmt.dateTime(chart.to)}"></span>
+          </figcaption>
+        </figure>
+      </th:block>
+      <div th:if="${chart == null}" class="empty-inline">
+        <svg class="i"><use href="#i-chart"/></svg>
+        <p class="muted" th:text="#{detail.chart.empty}">The chart appears after two successful checks.</p>
+      </div>
+
+      <div class="section-head">
+        <h2 th:text="#{detail.stores.title}">Prices by store</h2>
+        <span class="muted small" th:text="#{detail.stores.hint}">from the last successful check</span>
+      </div>
+      <div class="table-wrap" th:unless="${#lists.isEmpty(latestPrices)}">
+        <table>
+          <thead><tr>
+            <th th:text="#{detail.col.store}">Store</th>
+            <th class="num" th:text="#{detail.col.price}">Price</th>
+            <th class="num" th:text="#{detail.col.vsTarget}">vs target</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+            <tr th:each="p : ${latestPrices}" th:with="diff=${p.price.subtract(v.watch.maxPrice)}">
+              <td><strong th:text="${p.store}">Store</strong><div class="muted small truncate" th:text="${p.title}"></div></td>
+              <td class="num" th:text="${@fmt.brl(p.price)}">R$</td>
+              <td class="num">
+                <span class="pill" th:classappend="${diff.signum() > 0} ? 'pill-above' : 'pill-deal'"
+                      th:text="${diff.signum() > 0} ? |+${@fmt.brl(diff)}| : |−${@fmt.brl(diff.abs())}|">+R$</span>
+              </td>
+              <td class="num"><a class="btn btn-ghost btn-small" th:href="${p.url}" target="_blank" rel="noopener noreferrer">
+                <span th:text="#{detail.open}">Open</span><svg class="i"><use href="#i-external"/></svg></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p th:if="${#lists.isEmpty(latestPrices)}" class="muted" th:text="#{detail.stores.empty}">No prices yet.</p>
+
+      <div class="section-head">
+        <h2 th:text="#{detail.deals.title}">Deals found</h2>
+      </div>
+      <ul class="list" th:unless="${#lists.isEmpty(deals)}">
+        <li th:each="o : ${deals}">
+          <div>
+            <a th:href="${o.url}" target="_blank" rel="noopener noreferrer" th:text="${o.title ?: o.store}">title</a>
+            <div class="muted small">
+              <span th:text="${o.store}">store</span> ·
+              <time data-rel th:datetime="${@fmt.iso(o.foundAt)}" th:text="${@fmt.dateTime(o.foundAt)}"></time>
+            </div>
+          </div>
+          <div class="list-end">
+            <strong th:text="${@fmt.brl(o.price)}">R$</strong>
+            <span th:if="${#sets.isEmpty(v.watch.channels)}" class="pill pill-muted" th:text="#{detail.deals.noChannel}">here only</span>
+            <span th:unless="${#sets.isEmpty(v.watch.channels)}" class="pill" th:classappend="${o.notified} ? 'pill-deal' : 'pill-muted'"
+                  th:text="${o.notified} ? #{detail.deals.notified} : #{detail.deals.notNotified}">sent</span>
+          </div>
+        </li>
+      </ul>
+      <p th:if="${#lists.isEmpty(deals)}" class="muted" th:text="#{detail.deals.empty}">Nothing at or below your price yet.</p>
+
+      <div class="section-head">
+        <h2 th:text="#{detail.runs.title}">Check history</h2>
+      </div>
+      <div class="table-wrap" th:unless="${#lists.isEmpty(runs)}">
+        <table>
+          <thead><tr>
+            <th th:text="#{detail.col.when}">When</th>
+            <th th:text="#{detail.col.result}">Result</th>
+            <th class="num" th:text="#{detail.col.best}">Best</th>
+            <th class="num" th:text="#{detail.col.duration}">Took</th>
+            <th class="num" th:text="#{detail.col.cost}">Cost</th>
+          </tr></thead>
+          <tbody>
+            <tr th:each="r : ${runs}">
+              <td><time data-rel th:datetime="${@fmt.iso(r.startedAt)}" th:text="${@fmt.dateTime(r.startedAt)}"></time></td>
+              <td>
+                <span th:if="${r.finishedAt == null}" class="pill pill-muted" th:text="#{status.SEARCHING}">Searching</span>
+                <th:block th:if="${r.finishedAt != null}">
+                  <span th:if="${r.success}" class="pill pill-ok" th:text="#{detail.runs.ok(${r.matches})}">OK</span>
+                  <span th:unless="${r.success}" class="pill pill-error" th:text="#{error.__${r.errorCode}__.title}" th:title="${r.note}">Error</span>
+                </th:block>
+              </td>
+              <td class="num" th:text="${@fmt.brl(r.bestPrice)}">R$</td>
+              <td class="num" th:text="${@fmt.duration(r.startedAt, r.finishedAt)}">1m</td>
+              <td class="num" th:text="${@fmt.usd(r.costUsd)}">US$</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p th:if="${#lists.isEmpty(runs)}" class="muted" th:text="#{detail.runs.empty}">No checks yet.</p>
+    </section>
+  </div>
+</main>
+
+<th:block th:replace="~{fragments/layout :: shell}"></th:block>
+</body>
+</html>
