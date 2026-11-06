@@ -62,7 +62,7 @@ The page shows which channels are configured and has a **Send test** button for 
 | Property | Default | |
 |---|---|---|
 | `promo.claude.command` | `claude` | Path to the CLI if it is not on `PATH` |
-| `promo.claude.model` | `sonnet` | `haiku` is cheaper on usage, `opus` is more thorough |
+| `promo.claude.model` | `haiku` | Cheapest on usage; `sonnet` or `opus` read store pages more carefully |
 | `promo.claude.timeout` | `10m` | Max time for one search |
 | `promo.scheduler.tick` | `1m` | How often due watches are looked for; each watch has its own interval |
 
